@@ -1,0 +1,24 @@
+name: LE Daily Outreach
+on:
+  schedule:
+    - cron: '0 13 * * 2-4'  # 6am PT / 10am BRT, Tue-Wed-Thu
+  workflow_dispatch:          # lets you trigger manually too
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run outreach agent
+        run: python run.py
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
