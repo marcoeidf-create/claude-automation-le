@@ -37,7 +37,7 @@ network operating in their area.
 
 PROSPECT:
 - Name: {prospect.get('name') or 'Unknown'}
-- Title: {prospect.get('title') or 'Unknown'}
+- Title: {prospect.get('title') or research.get('identity', [{}])[0].get('content', 'Unknown — see identity research below')}
 - Agency: {prospect.get('agency') or 'Unknown'}
 - Jurisdiction: {prospect.get('jurisdiction') or 'Unknown'}
 - Email: {prospect.get('email') or 'Unknown'}
