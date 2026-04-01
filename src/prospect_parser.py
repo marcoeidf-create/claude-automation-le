@@ -8,10 +8,16 @@ from typing import Optional
 
 # Common LE titles to scan for in subject/body
 _LE_TITLES = [
+    # Full titles
     "Chief of Police", "Police Chief", "Sheriff", "Undersheriff",
     "Deputy Chief", "Assistant Chief", "Lieutenant", "Captain",
     "Commander", "Director", "Superintendent", "Marshal",
     "Commissioner", "Inspector", "Sergeant", "Detective",
+    "Special Agent in Charge", "Acting Chief", "Interim Chief",
+    "Deputy Director", "Assistant Sheriff",
+    # Abbreviations
+    "Sgt", "Lt", "Cpt", "Capt", "Cmdr", "Dir", "Supt",
+    "Det", "Insp", "SAC", "SAIC", "Dep", "Asst",
 ]
 
 # Common state abbreviations to help extract jurisdiction
