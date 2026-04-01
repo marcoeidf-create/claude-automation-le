@@ -2,6 +2,7 @@
 Web research module.
 
 For each non-responding prospect, runs targeted Tavily searches to find:
+  - Who owns the email / their identity and title
   - Personal background and career history
   - Their agency's size, jurisdiction, and recent activity
   - ORC / organized retail crime incidents or retail theft news in their area
@@ -16,14 +17,10 @@ from typing import Optional
 try:
     from tavily import TavilyClient
 except ImportError:
-    TavilyClient = None  # Handled gracefully below
+    TavilyClient = None
 
 
 def _search(client, query: str, max_results: int = 4) -> list:
-    """
-    Execute a single Tavily search and return a list of result dicts.
-    Returns an empty list on any error so one bad search doesn't stop the run.
-    """
     try:
         response = client.search(
             query=query,
@@ -35,7 +32,6 @@ def _search(client, query: str, max_results: int = 4) -> list:
             results.append({
                 "title": r.get("title", ""),
                 "url": r.get("url", ""),
-                # Truncate content to ~600 chars to keep token usage reasonable
                 "content": r.get("content", "")[:600],
             })
         return results
@@ -55,6 +51,7 @@ def research_prospect(
     a structured dict keyed by research category.
 
     Returns a dict with these keys:
+        identity       — who owns this email, their real name and title
         background     — career history, bio, LinkedIn
         orc_news       — ORC/retail theft activity in their jurisdiction
         grants_budget  — recent department funding, grants, budget news
@@ -71,51 +68,81 @@ def research_prospect(
 
     client = TavilyClient(api_key=api_key)
 
-    # Build search terms; fall back to email domain if fields are missing
     jurisdiction_label = jurisdiction or _jurisdiction_from_email(email)
     name_label = name or "law enforcement"
     agency_label = agency or "police department"
 
+    # Extract domain for identity search
+    email_domain = email.split("@")[-1] if "@" in email else ""
+
     research = {}
 
-    # ── 1. Personal background ─────────────────────────────────────────────────
+    # ── 0. Identity lookup — who owns this email ──────────────────────────────
+    identity_results = []
+    if email_domain:
+        identity_results.extend(_search(
+            client,
+            f'site:{email_domain} chief sheriff director leadership staff',
+            max_results=3,
+        ))
+        time.sleep(0.3)
+    if name_label and name_label != "law enforcement":
+        identity_results.extend(_search(
+            client,
+            f'"{name_label}" {agency_label} title position chief sheriff lieutenant',
+            max_results=3,
+        ))
+        time.sleep(0.3)
+    research["identity"] = identity_results
+
+    # ── 1. Personal background ────────────────────────────────────────────────
     research["background"] = _search(
         client,
-        f'"{name_label}" {agency_label} chief police sheriff biography career',
+        f'"{name_label}" {agency_label} biography career history appointed',
     )
-    time.sleep(0.3)  # Respect rate limits
+    time.sleep(0.3)
 
-    # ── 2. ORC / retail theft activity in their jurisdiction ──────────────────
-    orc_queries = []
-    if jurisdiction_label:
-        orc_queries.append(
-            f"organized retail crime theft {jurisdiction_label} 2024 2025 arrest fencing"
-        )
-        orc_queries.append(
-            f"{jurisdiction_label} retail theft ORC police investigation 2024 2025"
-        )
-    else:
-        orc_queries.append(
-            f"{agency_label} organized retail crime investigation 2024 2025"
-        )
-
+    # ── 2. ORC / retail theft — specific and recent ───────────────────────────
     orc_results = []
-    for q in orc_queries:
-        orc_results.extend(_search(client, q, max_results=3))
+    if jurisdiction_label:
+        orc_results.extend(_search(
+            client,
+            f"organized retail crime {jurisdiction_label} 2025 2026 arrest bust fencing ring",
+            max_results=4,
+        ))
+        time.sleep(0.3)
+        orc_results.extend(_search(
+            client,
+            f"{jurisdiction_label} retail theft shoplifting police investigation 2025 2026",
+            max_results=3,
+        ))
+        time.sleep(0.3)
+        orc_results.extend(_search(
+            client,
+            f"{jurisdiction_label} ORC smash grab theft organized crime case 2025 2026",
+            max_results=3,
+        ))
+        time.sleep(0.3)
+    else:
+        orc_results.extend(_search(
+            client,
+            f"{agency_label} organized retail crime investigation arrest 2025 2026",
+            max_results=4,
+        ))
         time.sleep(0.3)
     research["orc_news"] = orc_results
 
-    # ── 3. Grants, budgets, and funding ───────────────────────────────────────
+    # ── 3. Grants, budgets, and funding ──────────────────────────────────────
     research["grants_budget"] = _search(
         client,
-        f"{agency_label} {jurisdiction_label or ''} police grant budget funding 2024 2025",
+        f"{agency_label} {jurisdiction_label or ''} police grant budget funding 2025 2026",
     )
     time.sleep(0.3)
 
     # ── 4. Public statements and press releases ───────────────────────────────
     research["statements"] = _search(
         client,
-        f'"{name_label}" police chief sheriff press release statement interview 2024 2025',
+        f'"{name_label}" {agency_label} press release statement interview 2025 2026',
     )
     time.sleep(0.3)
 
@@ -123,7 +150,7 @@ def research_prospect(
     if jurisdiction_label:
         research["agency_info"] = _search(
             client,
-            f"{agency_label} {jurisdiction_label} police department news 2024 2025",
+            f"{agency_label} {jurisdiction_label} police department news initiative 2025 2026",
         )
     else:
         research["agency_info"] = []
@@ -132,15 +159,9 @@ def research_prospect(
 
 
 def _jurisdiction_from_email(email: str) -> str:
-    """
-    Heuristic: attempt to extract a jurisdiction hint from an email domain.
-    e.g. john@austinpd.gov → "Austin"
-    Returns empty string if nothing useful found.
-    """
     if not email or "@" not in email:
         return ""
     domain = email.split("@")[1].lower().split(".")[0]
-    # Strip common LE suffixes
     for suffix in ["pd", "police", "sheriff", "so", "co", "city"]:
         domain = domain.replace(suffix, "").strip()
     return domain.title() if len(domain) > 2 else ""
