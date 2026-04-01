@@ -27,3 +27,10 @@ jobs:
         run: python run.py
         env:
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+
+      - name: Debug token
+        env:
+          TOKEN_JSON: ${{ secrets.TOKEN_JSON }}
+        run: |
+          echo "Token length: ${#TOKEN_JSON}"
+          echo "$TOKEN_JSON" | base64 -d | head -c 50
