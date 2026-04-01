@@ -21,7 +21,7 @@ jobs:
       - name: Write Gmail credentials
         run: |
           echo '${{ secrets.CREDENTIALS_JSON }}' > credentials.json
-          echo '${{ secrets.TOKEN_JSON }}' > token.json
+          echo '${{ secrets.TOKEN_JSON }}' | base64 -d > token.json
 
       - name: Run outreach agent
         run: python run.py
