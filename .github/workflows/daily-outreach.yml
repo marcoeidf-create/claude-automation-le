@@ -2,7 +2,7 @@ name: LE Daily Outreach
 on:
   schedule:
     - cron: '0 13 * * 2-4'  # 6am PT / 10am BRT, Tue-Wed-Thu
-  workflow_dispatch:          # lets you trigger manually too
+  workflow_dispatch:
 
 jobs:
   run-agent:
@@ -17,6 +17,11 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Write Gmail credentials
+        run: |
+          echo '${{ secrets.CREDENTIALS_JSON }}' > credentials.json
+          echo '${{ secrets.TOKEN_JSON }}' > token.json
 
       - name: Run outreach agent
         run: python run.py
