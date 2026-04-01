@@ -15,13 +15,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
       - name: Write Gmail credentials
+        env:
+          TOKEN_JSON: ${{ secrets.TOKEN_JSON }}
+          CREDENTIALS_JSON: ${{ secrets.CREDENTIALS_JSON }}
         run: |
-          echo '${{ secrets.CREDENTIALS_JSON }}' > credentials.json
-          echo '${{ secrets.TOKEN_JSON }}' | base64 -d > token.json
+          echo "$TOKEN_JSON" | base64 -d > token.json
+          echo "$CREDENTIALS_JSON" > credentials.json
 
       - name: Run outreach agent
         run: python run.py
